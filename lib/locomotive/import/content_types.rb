@@ -204,8 +204,8 @@ module Locomotive
 
             content.send("#{association.name}=", value)
           end
-
-          content.save
+          # prevent habtm scan (very time consuming)
+          content.save_without_habtm_sync
         end
       end
 
