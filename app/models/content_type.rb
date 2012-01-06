@@ -83,6 +83,14 @@ class ContentType
     list = (if conditions.nil? || conditions.empty?
       self.contents
     else
+      # check for order_by: "field [asc|desc]" condition
+      if order_by = conditions.delete('order_by')
+        column, sort_order = order_by.split
+        column = column.to_sym
+      else
+        sort_order = nil
+      end
+
       conditions_with_names = {}
 
       conditions.each do |key, value|
@@ -102,9 +110,11 @@ class ContentType
       self.contents.where(conditions_with_names)
     end).sort { |a, b| (a.send(column) && b.send(column)) ? (a.send(column) || 0) <=> (b.send(column) || 0) : 0 }
 
-    return list if self.order_manually?
-
-    self.asc_order? ? list : list.reverse
+    if sort_order.nil?
+      (self.order_manually? || self.asc_order?) ? list : list.reverse
+    else
+      sort_order == 'asc' ? list : list.reverse
+    end
   end
 
   def sort_contents!(ids)
