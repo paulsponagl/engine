@@ -109,7 +109,7 @@ class ContentInstance
     self.content_type.fields_by_kind('has_many').collect do |has_many_field|
       next unless has_many_field.target_klass
       target_type = has_many_field.target_klass._parent
-      target_type.fields_by_kind('has_many').any?{ |f| f.target_klass._parent == self.content_type } ? target_type : nil
+      target_type.fields_by_kind('has_many').any?{ |f| f.respond_to?(:target_klass) && f.try(:target_klass).try(:_parent) == self.content_type } ? target_type : nil
     end.compact
   end
 
