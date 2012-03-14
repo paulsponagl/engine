@@ -138,7 +138,8 @@ Scenario: Render liquid variable used as default editable file name
 
     My application file is /different-default.pdf
     """
-
+  
+  
 Scenario: Simple select element
   Given a page named "hello-world" with the template:
     """
