@@ -107,7 +107,7 @@ module Locomotive
 
           if render_children_for_page?(page, depth) && bootstrap?
             css           += ' dropdown'
-            link_options  = %{ class="dropdown-toggle" data-toogle="dropdown"}
+            link_options  = %{ class="dropdown-toggle" data-toggle="dropdown"}
             href          = '#'
             caret         = %{ <b class="caret"></b>}
           end

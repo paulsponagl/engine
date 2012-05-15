@@ -27,7 +27,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'mongo',                           '~> 1.5.2'
   s.add_dependency 'bson_ext',                        '~> 1.5.2'
-  s.add_dependency 'mongoid',                         '~> 2.4.6'
+  s.add_dependency 'mongoid',                         '~> 2.4.9'
   s.add_dependency 'locomotive-mongoid-tree',         '~> 0.6.2'
 
   s.add_dependency 'custom_fields',                   '~> 2.0.0.rc10'
@@ -59,7 +59,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'rack-cache',                      '~> 1.1'
   s.add_dependency 'mimetype-fu',                     '~> 0.1.2'
 
-  s.add_dependency 'multi_json',                      '1.2.0'
+  s.add_dependency 'multi_json',                      '~> 1.3.4'
   s.add_dependency 'httparty',                        '~> 0.8.1'
   s.add_dependency 'actionmailer-with-request',       '~> 0.3.0'
 
