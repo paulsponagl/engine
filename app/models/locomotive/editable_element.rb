@@ -72,6 +72,7 @@ module Locomotive
     #
     def add_current_locale
       locale = ::Mongoid::Fields::I18n.locale.to_s
+      puts "locale: #{locale} locales: #{self.locales}"
       self.locales << locale unless self.locales.include?(locale)
     end
 

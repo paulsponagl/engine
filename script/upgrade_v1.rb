@@ -7,15 +7,10 @@ end
 
 # ================ GLOBAL VARIABLES ==============
 
-$database_name      = 'locomotive_engine_dev'
-$database_host      = 'localhost'
-$database_port      = '27017'
-# $database_username  = '<your username>'
-# $database_password  = '<your password>'
+$database = 'locomotive_prod'
 
-$default_locale     = 'en'
-$locale_exceptions  = {}
-
+$default_locale = 'de'
+$locale_exceptions = {}
 # Example:
 # $locale_exceptions = {
 #   '4c082a9393d4330812000002' => 'fr',
@@ -41,10 +36,20 @@ $s3 = false
 require 'mongoid'
 
 Mongoid.configure do |config|
-  db = config.master = Mongo::Connection.new($database_host, $database_port).db($database_name)
-  if $database_username && $database_password
-    db.authenticate($database_username, $database_password)
-  end
+  name = $database
+  host = 'localhost'
+
+  # simple connection
+  config.master = Mongo::Connection.new.db(name)
+
+  # a more complicated connection
+  # config.master = Mongo::Connection.new('localhost', '27017', :logger => Logger.new($stdout)).db(name)
+
+  # connection with authentication
+  # db = config.master = Mongo::Connection.new(host, '27019').db(name)
+  # db.authenticate('username', 'password').tap do |auth|
+  #   puts auth.inspect
+  # end
 end
 
 db = Mongoid.config.master
@@ -110,17 +115,26 @@ if collection = db.collections.detect { |c| c.name == 'content_types' }
         if !field['reverse_lookup'].blank?
           type = 'has_many'
           operations['$set'].merge!("entries_custom_fields.#{index}.type" => 'has_many')
-
           # reverse_lookup -> inverse_of  => hmmmmmmm
           if _content_type = collection.find('_id' => BSON::ObjectId(field['target'][-24,24])).first
-            if _field = _content_type['entries_custom_fields'].detect { |f| f['_name'] == field['reverse_lookup'] }
-              operations['$set'].merge!("entries_custom_fields.#{index}.inverse_of" => _field['_alias'])
-              rule_options['inverse_of'] = _field['_alias']
+            if _field = _content_type['entries_custom_fields'].detect { |f| (f['_name'] == field['reverse_lookup'] || f['name'] == content_type['slug']) }
+              setit = _field['_alias'] || _field['name']
+              operations['$set'].merge!("entries_custom_fields.#{index}.inverse_of" => setit)
+              rule_options['inverse_of'] = setit
             end
           end
         else
-          type = 'many_to_many'
-          operations['$set'].merge!("entries_custom_fields.#{index}.type" => 'many_to_many')
+          # setup a many_to_many if both sides reference each other
+          if _content_type = collection.find('_id' => BSON::ObjectId(field['target'][-24,24])).first
+            if _field = _content_type['entries_custom_fields'].detect { |f| (f['kind'] == 'has_many' || f['type'] == 'many_to_many') && (f['_alias'] == content_type['slug'] || f['name'] == content_type['slug']) }
+              type = 'many_to_many'
+              operations['$set'].merge!("entries_custom_fields.#{index}.type" => 'many_to_many')
+              rule_options['inverse_of'] = _field['_alias']
+            end
+          end
+          # Ask did about the reason for this
+          #type = 'many_to_many'
+          #operations['$set'].merge!("entries_custom_fields.#{index}.type" => 'many_to_many')
         end
       end
 
@@ -165,8 +179,9 @@ if collection = db.collections.detect { |c| c.name == 'content_types' }
       end
 
       operations['$unset'].merge!({
-        "entries_custom_fields.#{index}._name"          => '1',
-        "entries_custom_fields.#{index}._alias"         => '1',
+        # do not destroy this for now - will be needed for referenced models
+        #"entries_custom_fields.#{index}._name"          => '1',
+        #"entries_custom_fields.#{index}._alias"         => '1',
         "entries_custom_fields.#{index}.kind"           => '1',
         "entries_custom_fields.#{index}.category_items" => '1',
         "entries_custom_fields.#{index}.format"         => '1'
@@ -200,7 +215,6 @@ if collection = db.collections.detect { |c| c.name == 'content_types' }
         '_label_field_name'     => label_field_name,
         'custom_fields_recipe'  => recipe
       })
-
       # localized attributes
       %w(seo_title meta_description meta_keywords).each do |name|
         attributes[name] = { locale => content[name] }
@@ -213,7 +227,7 @@ if collection = db.collections.detect { |c| c.name == 'content_types' }
         when 'string', 'text', 'date'
           attributes[name] = content[_name]
         when 'boolean'
-          attributes[name] = content[_name] == '1'
+          attributes[name] = (content[_name] == '1' || content[_name] == true)
         when 'file'
           attributes[name] = content["#{_name}_filename"]
         when 'category', 'has_one'
@@ -222,11 +236,11 @@ if collection = db.collections.detect { |c| c.name == 'content_types' }
           if !field['reverse_lookup'].blank?
             # nothing to do
           else
-            attributes["#{name.singularize}_ids"] = (content[_name] || []).map { |_id| BSON::ObjectId(_id) }
+            # BSON::ObjectId(_id) throws errors being malformed sometimes
+            attributes["#{name.singularize}_ids"] = (content[_name] || []).map { |_id| BSON::ObjectId("#{_id}") rescue (puts "contents error id #{_id} #{$!}" ;nil) }
           end
         end
       end
-
       # insert document
       contents_collection.insert attributes
     end
@@ -255,6 +269,7 @@ if collection = db.collections.detect { |c| c.name == 'sites' }
     end
 
     collection.update({ '_id' => site['_id'] }, { '$set' => attributes })
+
   end
 end
 
@@ -304,24 +319,27 @@ if collection = db.collections.detect { |c| c.name == 'pages' }
     modifications['response_type']  = 'text/html'
 
     %w(title slug fullpath raw_template serialized_template template_dependencies snippet_dependencies seo_title meta_keywords meta_description).each do |attr|
-      modifications[attr] = { locale => page[attr] }
+      modifications[attr] = { locale => page[attr] } unless page[attr].is_a?(Hash)
     end
 
-    if page['templatized']
+    if page['templatized'] && page['content_type_id']
       modifications['target_klass_name'] = "Locomotive::Entry#{page['content_type_id']}"
       removals['content_type_id'] = '1'
     end
 
     # editable elements
     (page['editable_elements'] || []).each_with_index do |editable_element, index|
-      modifications["editable_elements.#{index}._type"]   = "Locomotive::#{editable_element['_type']}"
-      modifications["editable_elements.#{index}.content"] = { locale => editable_element['content'] }
+      modifications["editable_elements.#{index}._type"]   = (%w(Locomotive) + editable_element['_type'].split('::')).uniq.join('::')
+      modifications["editable_elements.#{index}.content"] = { locale => editable_element['content'] } unless editable_element['content'].class == BSON::OrderedHash
       modifications["editable_elements.#{index}.locales"] = [locale]
 
       if editable_element['_type'] == 'EditableFile'
         modifications["editable_elements.#{index}.source"] = { locale => editable_element['source_filename'] }
+        #modifications["editable_elements.#{index}.default_content"] = { locale => false }
+
         removals["editable_elements.#{index}.source_filename"] = '1'
       end
+      removals["editable_elements.#{index}.default_content"] = '1'
 
       # FIXME: do not remember why I needed to run this code.
       # Locomotive::Page.each do |page|
@@ -362,8 +380,7 @@ end
   db.drop_collection name
 end
 
-# content entry assets
-#
+
 # Example:
 # old sites/4c34fc86cc85f01e47000005/contents/content_instance/4dc15162ceedba763500011a/files/didier_plate.png
 # new sites/4c34fc86cc85f01e47000005/content_entry{content_type_id}/4dc15162ceedba763500011a/files/didier_plate.png
@@ -383,7 +400,7 @@ if $s3
       content_type_id = collection.find('_id' => BSON::ObjectId($2)).first['content_type_id'].to_s
       new_key         = file.key.gsub('contents/content_instance', "content_entry#{content_type_id}")
 
-      puts "new file #{new_key}"
+      #puts "new file #{new_key}"
 
       # rename file by copying the original file to its new folder
       bucket.files.create(
@@ -396,14 +413,18 @@ if $s3
     end
   end
 else
+  require 'fileutils'
   Dir[File.join(File.dirname(__FILE__), '..', 'public', 'sites', '**/*')].each do |path|
     next if File.directory?(path)
+    #puts "path: #{path}"
 
     if path =~ /public\/sites\/([a-f0-9]+)\/contents\/content_instance\/([a-f0-9]+)\/files/
-      content_type_id = collection.find('_id' => BSON::ObjectId($2)).first['content_type_id'].to_s
+      asset = collection.find('_id' => BSON::ObjectId($2)).first
+      next unless asset
+      content_type_id = asset['content_type_id'].to_s
       new_path        = path.gsub('contents/content_instance', "content_entry#{content_type_id}")
 
-      puts "new file #{new_path}"
+      #puts "new file #{new_path}"
 
       # create the target folder
       FileUtils.mkdir_p(File.dirname(new_path))
@@ -414,7 +435,8 @@ else
 
   # do some cleaning
   Dir[File.join(File.dirname(__FILE__), '..', 'public', 'sites', '*', 'contents')].each do |folder|
-    puts "remove folder #{folder}"
+    #puts "remove folder #{folder}"
     FileUtils.rm_rf folder
   end
 end
+

@@ -63,7 +63,7 @@ module Locomotive
         protected
 
         def add_default_locale
-          self.locales = [Locomotive.config.site_locales.first] if self.locales.blank?
+          self.locales = [Locomotive.config.site_locales.first.to_s] if self.locales.blank?
         end
 
         def can_not_remove_default_locale

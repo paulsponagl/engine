@@ -82,7 +82,7 @@ module Locomotive
         # @return [ Array ] The children pages ordered by their position
         #
         def children_with_minimal_attributes( attrs = [] )
-          self.children.minimal_attributes( attrs )
+          self.children.minimal_attributes( attrs || [] )
         end
 
         # Assigns the new position of each child of this node.

@@ -126,7 +126,7 @@ module Locomotive
 
     def record_current_locale
       self.locales ||= []
-      self.locales << ::Mongoid::Fields::I18n.locale
+      self.locales << ::Mongoid::Fields::I18n.locale.to_s
       self.locales.uniq!
     end
 
