@@ -16,7 +16,7 @@ GIT
       sass (~> 3.1)
 
 GIT
-  remote: git@github.com:paulsponagl/custom_fields.git
+  remote: git://github.com/paulsponagl/custom_fields.git
   revision: 641d5ad3db232a37a93b55613011b779f5d70a73
   branch: numeric_types
   specs:
