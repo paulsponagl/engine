@@ -36,5 +36,5 @@
           %ul
             - content_type.entries.latest_updated.each do |entry|
               %li
-                = link_to truncate(entry._label(content_type), :length => 20), edit_content_entry_url(content_type.slug, entry)
+                = link_to truncate(entry._label(content_type).to_s, :length => 20), edit_content_entry_url(content_type.slug, entry)
                 %span= time_ago_in_words(entry.updated_at)
