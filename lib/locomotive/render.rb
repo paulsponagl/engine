@@ -11,7 +11,7 @@ module Locomotive
       else
         @page = locomotive_page
 
-        redirect_to(@page.redirect_url) and return if @page.present? && @page.redirect?
+        redirect_to(@page.redirect_url, :status => 301) and return if @page.present? && @page.redirect?
 
         render_no_page_error and return if @page.nil?
 
@@ -53,7 +53,7 @@ module Locomotive
         'url'               => request.url,
         'now'               => Time.now.utc,
         'today'             => Date.today,
-        'locale'            => I18n.locale,
+        'locale'            => I18n.locale.to_s,
         'default_locale'    => current_site.default_locale.to_s,
         'locales'           => current_site.locales,
         'current_user'      => Locomotive::Liquid::Drops::CurrentUser.new(current_locomotive_account)
@@ -64,7 +64,7 @@ module Locomotive
       assigns.merge!(flash.to_hash.stringify_keys) # data from public submissions
 
       if @page.templatized? # add instance from content type
-        assigns['entry'] = @page.content_entry
+        assigns['content_entry'] = assigns['entry'] = @page.content_entry
         assigns[@page.target_entry_name] = @page.content_entry # just here to help to write readable liquid code
       end
 

@@ -5,6 +5,10 @@ source :rubygems
 
 gemspec # Include gemspec dependencies
 
+# Devise 2.1 throws an error if devise-encryptable is present in gemspec only
+# TODO: Check Devise Code to remove that 'broken' existance test for devise-encryptable
+gem 'devise-encryptable'
+
 # The rest of the dependencies are for use when in the locomotive development environment
 
 group :development do
@@ -23,9 +27,8 @@ end
 group :assets do
   gem 'sass-rails',   '~> 3.2.4'
   gem 'coffee-rails', '~> 3.2.2'
-  gem 'uglifier',     '~> 1.2.3'
-  gem 'compass',        :git => 'git://github.com/chriseppstein/compass.git', :branch => 'no_rails_integration'
-  gem 'compass-rails',  :git => 'git://github.com/Compass/compass-rails.git'
+  gem 'uglifier',     '~> 1.2.4'
+  gem 'compass-rails'
 end
 
 group :test do
@@ -52,4 +55,6 @@ group :test do
   gem 'json_spec'
 
   gem 'database_cleaner'
+
+  # gem 'debugger', :git => 'git://github.com/cldwalker/debugger.git'
 end

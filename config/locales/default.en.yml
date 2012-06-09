@@ -7,6 +7,11 @@ en:
     formats:
       default: "%m/%d/%Y"
 
+  mongoid:
+    errors:
+      messages:
+        blank_on_locale: "can't be blank"
+
   errors:
       messages:
         domain_taken: "%{value} is already taken"
